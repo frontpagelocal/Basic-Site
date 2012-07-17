@@ -14,7 +14,7 @@ robots.txt
 sites/all/README.txt
 sites/all/modules/README.txt
 sites/all/themes/README.txt
-.htaccess
+#.htaccess
 
 #for non core developer
 #only include "sites" folder without exclusions before
