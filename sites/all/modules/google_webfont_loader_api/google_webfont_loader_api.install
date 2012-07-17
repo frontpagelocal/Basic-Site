@@ -1,0 +1,27 @@
+<?php
+
+/**
+ * @file
+ * Google Webfont Loader API install/update/uninstall hook implementation.
+ */
+
+/**
+ * Implements hook_uninstall().
+ */
+function google_webfont_loader_api_uninstall() {
+  variable_del('google_webfont_loader_api_font');
+  variable_del('google_webfont_loader_api_cache');
+  variable_del('google_webfont_loader_api_display_style');
+  variable_del('google_webfont_loader_api_last_cache');
+}
+
+/**
+ * Converts the selected font list into an array().
+ */
+function google_webfont_loader_api_update_7000() {
+  $font_list = variable_get('google_webfont_loader_api_font');
+  if (!is_array($font_list) && !empty($font_list)) {
+    $font_list = array($font_list => $font_list);
+    variable_set('google_webfont_loader_api_font', $font_list);
+  }
+}

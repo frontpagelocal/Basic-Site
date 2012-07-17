@@ -1,0 +1,85 @@
+name = FPL Basic
+description = Install the FrontPageLocal.com basic site package
+version = VERSION
+core = 7.x
+; Other
+dependencies[] = strongarm
+dependencies[] = advanced_help
+dependencies[] = colorbox
+dependencies[] = fieldset_helper
+dependencies[] = imagezoom
+dependencies[] = libraries
+dependencies[] = logintoboggan
+dependencies[] = token
+dependencies[] = transliteration
+dependencies[] = pathauto
+dependencies[] = fplbasic
+dependencies[] = redirect
+; Core
+dependencies[] = block
+dependencies[] = color
+dependencies[] = comment
+dependencies[] = contextual
+dependencies[] = dashboard
+dependencies[] = field
+dependencies[] = field_sql_storage
+dependencies[] = field_ui
+dependencies[] = file
+dependencies[] = filter
+dependencies[] = help
+dependencies[] = image
+dependencies[] = list
+dependencies[] = menu
+dependencies[] = node
+dependencies[] = number
+dependencies[] = options
+dependencies[] = path
+dependencies[] = rdf
+dependencies[] = search
+dependencies[] = shortcut
+dependencies[] = system
+dependencies[] = taxonomy
+dependencies[] = text
+dependencies[] = update
+dependencies[] = user
+dependencies[] = dblog
+dependencies[] = overlay
+; Administration
+dependencies[] = admin_devel
+dependencies[] = admin_menu
+dependencies[] = admin_menu_toolbar
+; Site Configuration
+dependencies[] = basic_site_package
+; CCK
+dependencies[] = cck
+; Context
+dependencies[] = context
+dependencies[] = context_layouts
+dependencies[] = context_ui
+; Chaos tool suite
+dependencies[] = ctools
+; Development
+dependencies[] = devel_generate
+dependencies[] = profiler_builder
+dependencies[] = devel
+; Path management
+dependencies[] = globalredirect
+; Media
+dependencies[] = imagecache_actions
+dependencies[] = imagecache_canvasactions
+; Input filters
+dependencies[] = pathologic
+; Views
+dependencies[] = views_ui
+dependencies[] = views
+; User interface
+dependencies[] = wysiwyg
+; Features
+dependencies[] = features
+
+
+; Information added by drush on 2012-07-17
+version = "unknown"
+project = "fplbasic"
+datestamp = "1342563122"
+

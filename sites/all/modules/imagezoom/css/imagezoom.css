@@ -1,0 +1,50 @@
+div#zoom-img-wrapper {
+  position: absolute;
+  top: 0px;
+  overflow: hidden;
+  z-index: 1000;
+}
+
+div#zoom-img-wrapper.popup {
+  left: 75%;
+  width: 400px;
+  height: 300px;
+  border: 5px solid #000;
+  background: #fff;
+}
+
+div#zoom-img-wrapper.inner {
+  left: 0px;
+}
+
+img#zoom-img {
+  position: absolute;
+  top: 0px;
+  left: 0px;
+}
+
+a.imagezoom {
+  cursor: crosshair;
+}
+
+ul.imagezoom-thumbs {
+  padding: 0px;
+}
+
+div.imagezoom-thumb-wrapper .imagezoom-thumb-image {
+  float: left;
+  list-style: none;
+  padding: 5px 5px 0px 0px;
+}
+
+.imagezoom-thumb-wrapper .imagezoom-thumb-hide {
+  display: none;
+}
+
+.zoom-img-title {
+  position: absolute;
+  width: 100%;
+  background: #000;
+  color: #fff;
+  padding-left: 5px;
+}

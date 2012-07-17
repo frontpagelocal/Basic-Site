@@ -1,0 +1,390 @@
+<?php
+
+/**
+ * @file
+ * Provides an Image Zoom field formatter for Image fields.
+ *
+ * This module provides a field formatter that allows users to specify an image
+ * style to display, and another image style to use as the zoomed version of the
+ * image. Hovering the mouse over the image will display the zoomed version,
+ * which shifts with mouse movement.
+ */
+
+/**
+ * Implements hook_menu().
+ */
+function imagezoom_menu() {
+  $items['admin/config/media/imagezoom'] = array(
+    'title' => 'Image Zoom',
+    'description' => 'Configure settings for the Image Zoom field formatter.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('imagezoom_settings_form'),
+    'access arguments' => array('administer image styles'),
+    'file' => 'imagezoom.admin.inc',
+  );
+
+  return $items;
+}
+
+/**
+ * Implements hook_field_formatter().
+ */
+function imagezoom_field_formatter_info() {
+  $formatters = array(
+    'imagezoom' => array(
+      'label' => t('Image Zoom'),
+      'field types' => array('image', 'media'),
+      'settings' => array(
+        'imagezoom_display_style' => '',
+        'imagezoom_zoom_style' => '',
+        'imagezoom_thumb_style' => '',
+      ),
+    ),
+  );
+
+  return $formatters;
+}
+
+/**
+ * Implements hook_field_formatter_settings_form().
+ */
+function imagezoom_field_formatter_settings_form($field, $instance, $view_mode, $form, &$form_state) {
+  $display = $instance['display'][$view_mode];
+  $settings = $display['settings'];
+
+  $image_styles = image_style_options(FALSE);
+  $element['imagezoom_display_style'] = array(
+    '#type' => 'select',
+    '#title' => t('Display image style'),
+    '#options' => $image_styles,
+    '#empty_option' => t('None (original image)'),
+    '#default_value' => $settings['imagezoom_display_style'],
+  );
+
+  $element['imagezoom_zoom_style'] = array(
+    '#type' => 'select',
+    '#title' => t('Zoomed image style'),
+    '#options' => $image_styles,
+    '#empty_option' => t('None (original image)'),
+    '#default_value' => $settings['imagezoom_zoom_style'],
+  );
+
+  if (variable_get('imagezoom_multiple_thumbs', 0)) {
+    $element['imagezoom_thumb_style'] = array(
+      '#type' => 'select',
+      '#title' => t('Thumbnail image style'),
+      '#options' => $image_styles,
+      '#empty_option' => t('None (original image)'),
+      '#default_value' => $settings['imagezoom_thumb_style'],
+    );
+  }
+
+  return $element;
+}
+
+/**
+ * Implements hook_field_formatter_settings_summary().
+ */
+function imagezoom_field_formatter_settings_summary($field, $instance, $view_mode) {
+  $display = $instance['display'][$view_mode];
+  $settings = $display['settings'];
+
+  $summary = array();
+
+  $image_styles = image_style_options(FALSE);
+  // Unset possible 'No defined styles' option.
+  unset($image_styles['']);
+  // Styles could be lost because of enabled/disabled modules that define
+  // their styles in code.
+  $summary[] = t('Display image style: @style', array(
+    '@style' => isset($image_styles[$settings['imagezoom_display_style']]) ?
+    $image_styles[$settings['imagezoom_display_style']] : 'original',
+  ));
+  $summary[] = t('Zoomed image style: @style', array(
+    '@style' => isset($image_styles[$settings['imagezoom_zoom_style']]) ?
+    $image_styles[$settings['imagezoom_zoom_style']] : 'original',
+  ));
+  if (variable_get('imagezoom_multiple_thumbs', 0)) {
+    $summary[] = t('Thumbnail image style: @style', array(
+      '@style' => isset($image_styles[$settings['imagezoom_thumb_style']]) ?
+      $image_styles[$settings['imagezoom_thumb_style']] : 'original',
+    ));
+  }
+
+  return implode('<br />', $summary);
+}
+
+/**
+ * Implements hook_field_formatter_view().
+ */
+function imagezoom_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display) {
+  $display_style = $display['settings']['imagezoom_display_style'];
+  $zoom_style = $display['settings']['imagezoom_zoom_style'];
+  $thumb_style = isset($display['settings']['imagezoom_thumb_style']) ?
+    $display['settings']['imagezoom_thumb_style'] : NULL;
+
+  $element = array();
+  if (variable_get('imagezoom_multiple_thumbs', 0) && count($items) > 1) {
+    $element[] = array(
+      '#theme' => 'imagezoom_image_multiple',
+      '#items' => $items,
+      '#display_style' => $display_style,
+      '#zoom_style' => $zoom_style,
+      '#thumb_style' => $thumb_style,
+    );
+  }
+  else {
+    foreach ($items as $delta => $item) {
+      $element[$delta] = array(
+        '#theme' => 'imagezoom_image',
+        '#item' => $item,
+        '#display_style' => $display_style,
+        '#zoom_style' => $zoom_style,
+      );
+    }
+  }
+
+  return $element;
+}
+
+/**
+ * Implements hook_theme().
+ */
+function imagezoom_theme() {
+  return array(
+    'imagezoom_image' => array(
+      'variables' => array(
+        'item' => NULL,
+        'display_style' => NULL,
+        'zoom_style' => NULL,
+      ),
+    ),
+    'imagezoom_image_multiple' => array(
+      'variables' => array(
+        'items' => NULL,
+        'display_style' => NULL,
+        'zoom_style' => NULL,
+        'thumb_style' => NULL,
+      ),
+    ),
+    'imagezoom_thumbs' => array(
+      'variables' => array(
+        'items' => NULL,
+        'class' => NULL,
+      ),
+    ),
+  );
+}
+
+/**
+ * Returns the HTML code for an image with a zoomed version on mouseover.
+ */
+function theme_imagezoom_image($variables) {
+  if (!variable_get('imagezoom_load_all', 0)) {
+    drupal_add_js(drupal_get_path('module', 'imagezoom') . '/js/imagezoom.min.js');
+  }
+  $display_title = variable_get('imagezoom_display_title', 0);
+  $hide_thumbs = variable_get('imagezoom_hide_active_thumb', 0);
+  $settings = array(
+    'zoom_type' => variable_get('imagezoom_zoom_type', 'popup'),
+    'display_title' => $display_title,
+    'hide_thumbs' => $hide_thumbs,
+  );
+  drupal_add_js(array('imagezoom' => $settings), 'setting');
+  drupal_add_css(drupal_get_path('module', 'imagezoom') . '/css/imagezoom.css');
+
+  $item = $variables['item'];
+  if (isset($item['file']) && is_object($item['file'])) {
+    $item['uri'] = $item['file']->uri;
+    $item['alt'] = '';
+  }
+
+  $image = array(
+    'path' => $item['uri'],
+    'alt' => $item['alt'],
+  );
+
+  // Do not output an empty 'title' attribute.
+  if (drupal_strlen($item['title']) > 0) {
+    $image['title'] = $item['title'];
+  }
+
+  $display_img = '';
+  if ($variables['display_style']) {
+    $image['style_name'] = $variables['display_style'];
+    $display_img = theme('image_style', $image);
+  }
+  else {
+    $display_img = theme('image', $image);
+  }
+
+  $zoom_img = '';
+  if ($variables['zoom_style']) {
+    $image['style_name'] = $variables['zoom_style'];
+    $zoom_img = image_style_url($variables['zoom_style'], $item['uri']);
+  }
+  else {
+    $zoom_img = file_create_url($image['path']);
+  }
+
+  $output = l($display_img, $zoom_img, array(
+    'html' => TRUE,
+    'attributes' => array(
+      'class' => 'imagezoom',
+      'rel' => 'nofollow',
+    ),
+  ));
+
+  return $output;
+}
+
+/**
+ * Returns the HTML code for an image with a zoomed version on mouseover.
+ */
+function theme_imagezoom_image_multiple($variables) {
+  if (!variable_get('imagezoom_load_all', 0)) {
+    drupal_add_js(drupal_get_path('module', 'imagezoom') . '/js/imagezoom.min.js');
+  }
+  $display_title = variable_get('imagezoom_display_title', 0);
+  $hide_thumbs = variable_get('imagezoom_hide_active_thumb', 0);
+  $settings = array(
+    'zoom_type' => variable_get('imagezoom_zoom_type', 'popup'),
+    'display_title' => $display_title,
+    'hide_thumbs' => $hide_thumbs,
+  );
+  drupal_add_js(array('imagezoom' => $settings), 'setting');
+  drupal_add_css(drupal_get_path('module', 'imagezoom') . '/css/imagezoom.css');
+
+  $items = $variables['items'];
+  $output = '';
+
+  $image = array(
+    'path' => $items[0]['uri'],
+    'alt' => $items[0]['alt'],
+  );
+
+  // Do not output an empty 'title' attribute.
+  if (drupal_strlen($items[0]['title']) > 0) {
+    $image['title'] = $items[0]['title'];
+  }
+
+  $main_img = '';
+  if ($variables['display_style']) {
+    $image['style_name'] = $variables['display_style'];
+    $main_img = theme('image_style', $image);
+  }
+  else {
+    $main_img = theme('image', $image);
+  }
+
+  $zoom_img = '';
+  if ($variables['zoom_style']) {
+    $image['style_name'] = $variables['zoom_style'];
+    $zoom_img = image_style_url($variables['zoom_style'], $items[0]['uri']);
+  }
+  else {
+    $zoom_img = file_create_url($image['path']);
+  }
+
+  $output .= '<div id="imagezoom-main">';
+  $output .= l($main_img, $zoom_img, array(
+    'html' => TRUE,
+    'attributes' => array(
+      'class' => 'imagezoom',
+      'rel' => 'nofollow',
+    ),
+  ));
+  $output .= '</div>';
+
+  $thumbs = array();
+  $classes = array();
+  foreach ($items as $key => $item) {
+    $image = array(
+      'path' => $item['uri'],
+      'alt' => $item['alt'],
+    );
+
+    // Do not output an empty 'title' attribute.
+    if (drupal_strlen($item['title']) > 0) {
+      $image['title'] = $item['title'];
+    }
+
+    $thumb = '';
+    if ($variables['thumb_style']) {
+      $image['style_name'] = $variables['thumb_style'];
+      $thumb = theme('image_style', $image);
+    }
+    else {
+      $thumb = theme('image', $image);
+    }
+
+    $class = array('imagezoom-thumb-image');
+    $hide = '';
+    if ($key == 0) {
+      $class[] = 'active';
+      if ($hide_thumbs) {
+        $class[] = 'imagezoom-thumb-hide';
+      }
+    }
+
+    $thumb = l($thumb, 'swap', array(
+      'html' => TRUE,
+      'attributes' => array('rel' => 'nofollow'),
+    ));
+
+    $thumbs[$key] = $thumb;
+    $classes[$key] = implode(' ', $class);
+  }
+
+  $variables = array(
+    'items' => $thumbs,
+    'class' => $classes,
+  );
+  if (module_exists('jcarousel')) {
+    $variables['jcarousel'] = TRUE;
+  }
+  $output .= theme('imagezoom_thumbs', $variables);
+
+  return $output;
+}
+
+/**
+ * Returns the HTML code for a set of thumbnails.
+ */
+function theme_imagezoom_thumbs($variables) {
+  $items = $variables['items'];
+  $class = $variables['class'];
+  if (isset($variables['jcarousel'])) {
+    $output = '<div class="imagezoom-thumb-wrapper"><ul class="imagezoom-thumbs jcarousel-skin-default">';
+    jcarousel_add('imagezoom-thumbs', array());
+  }
+  else {
+    $output = '<div class="imagezoom-thumb-wrapper"><ul class="imagezoom-thumbs">';
+  }
+  foreach ($items as $key => $item) {
+    $output .= '<li class="' . $class[$key] . '">' . $item . '</li>';
+  }
+  $output .= '</ul></div>';
+
+  return $output;
+}
+
+/**
+ * Implements hook_preprocess_page().
+ */
+function imagezoom_preprocess_page(&$variables) {
+  $type = isset($variables['node']->type) ? $variables['node']->type : '';
+  $types = array_filter(variable_get('imagezoom_load_all_types', array()));
+  if (variable_get('imagezoom_load_all', 0) && in_array($type, $types)) {
+    $display_title = variable_get('imagezoom_display_title', 0);
+    $hide_thumbs = variable_get('imagezoom_hide_active_thumb', 0);
+    drupal_add_js(drupal_get_path('module', 'imagezoom') . '/js/imagezoom.min.js');
+    $settings = array(
+      'zoom_type' => variable_get('imagezoom_zoom_type', 'popup'),
+      'display_title' => $display_title,
+      'hide_thumbs' => $hide_thumbs,
+    );
+    drupal_add_js(array('imagezoom' => $settings), 'setting');
+    drupal_add_css(drupal_get_path('module', 'imagezoom') . '/css/imagezoom.css');
+  }
+}

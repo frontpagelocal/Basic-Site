@@ -1,0 +1,13 @@
+; $Id: profiler_builder
+name = "Profiler Builder"
+description = "Helper module for profiler to build distributions even faster; ported to D7"
+version = 1.0
+package = Development
+core = "7.x"
+
+; Information added by drupal.org packaging script on 2011-10-20
+version = "7.x-1.0-alpha2"
+core = "7.x"
+project = "profiler_builder"
+datestamp = "1319131534"
+
